@@ -1,0 +1,28 @@
+@namespace epub "http://www.idpf.org/2007/ops";
+
+html {
+  writing-mode: vertical-rl;
+  -epub-writing-mode: vertical-rl;
+  -webkit-writing-mode: vertical-rl;
+}
+
+body {
+  line-height: 2.0;
+  writing-mode: vertical-rl;
+  -epub-writing-mode: vertical-rl;
+  -webkit-writing-mode: vertical-rl;
+}
+
+p {
+  margin-left: 1.6em;
+  margin-right: 1.6em;
+  text-indent: 1.6em;
+}
+
+h1 {
+  text-align: center;
+  margin: 2em 0;
+}
+
+/* Kobo specific styling */
+span.koboSpan { font-size: 1em; }
