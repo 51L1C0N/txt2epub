@@ -230,9 +230,8 @@ export default function App() {
             &copy; 2026 HanYun txt2epub. Crafted for readers.
           </p>
           <div className="flex items-center gap-6">
-            <a href="#" className="text-xs text-muted-foreground hover:text-primary transition-colors">Documentation</a>
-            <a href="#" className="text-xs text-muted-foreground hover:text-primary transition-colors">Privacy</a>
-            <a href="#" className="text-xs text-muted-foreground hover:text-primary transition-colors">GitHub</a>
+            <a href="https://51l1c0n.github.io/txt2epub/" target="_blank" rel="noreferrer" className="text-xs text-muted-foreground hover:text-primary transition-colors">Live App</a>
+            <a href="https://github.com/51l1c0n/txt2epub" target="_blank" rel="noreferrer" className="text-xs text-muted-foreground hover:text-primary transition-colors">GitHub</a>
           </div>
         </div>
       </footer>

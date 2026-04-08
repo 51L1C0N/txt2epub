@@ -1,19 +1,15 @@
 name: Deploy to GitHub Pages
 
 on:
-  # 當推送到 main 分支時觸發 (如果您的預設分支是 master，請改為 master)
   push:
     branches: ["main"]
-  # 允許手動觸發部署
   workflow_dispatch:
 
-# 設置 GITHUB_TOKEN 的權限以允許部署到 GitHub Pages
 permissions:
   contents: read
   pages: write
   id-token: write
 
-# 允許一個併發的部署
 concurrency:
   group: "pages"
   cancel-in-progress: true
@@ -46,7 +42,6 @@ jobs:
       - name: Upload artifact
         uses: actions/upload-pages-artifact@v3
         with:
-          # Vite 默認的構建輸出目錄是 dist
           path: './dist'
 
       - name: Deploy to GitHub Pages

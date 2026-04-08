@@ -1,5 +1,5 @@
 {
   "name": "HanYun Txt2Epub",
-  "description": "Convert TXT files to polished EPUB ebooks with Traditional Chinese conversion, smart chapter detection, and Kobo-optimized formatting.",
+  "description": "Convert TXT files to polished EPUB ebooks with Traditional Chinese conversion, smart chapter detection, and Kobo-optimized formatting. Live version: https://51l1c0n.github.io/txt2epub/",
   "requestFramePermissions": []
 }
