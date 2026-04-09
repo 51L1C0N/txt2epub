@@ -15,9 +15,21 @@ export interface EpubOptions {
   koboOptimization: boolean;
 }
 
+// Helper to sanitize filenames for cross-platform compatibility
+function sanitizeFilename(name: string): string {
+  // Remove invalid characters for Windows/macOS/Linux: \ / : * ? " < > |
+  return name.replace(/[\\/:*?"<>|]/g, '_').trim() || 'ebook';
+}
+
+// Helper to ensure valid XML IDs
+function toXmlId(name: string, index: number): string {
+  return `id_${index}`;
+}
+
 export async function generateEpub(fileContent: string, options: EpubOptions): Promise<Blob> {
   let content = fileContent;
-  let title = options.title;
+  let title = options.title || 'Untitled';
+  const author = options.author || 'Unknown';
 
   // 1. Chinese Conversion (Optional)
   if (options.convertToTraditional) {
@@ -25,7 +37,7 @@ export async function generateEpub(fileContent: string, options: EpubOptions): P
     title = convertToTraditional(title);
   }
 
-  // 2. Quote Replacement (Always apply to ensure vertical text quotes are correct)
+  // 2. Quote Replacement
   content = replaceQuotes(content);
 
   // 3. Chapter Parsing
@@ -34,12 +46,13 @@ export async function generateEpub(fileContent: string, options: EpubOptions): P
   // 4. Build EPUB
   const zip = new JSZip();
   const bookUuid = uuidv5(title, uuidv5.DNS);
+  const modifiedDate = new Date().toISOString().split('.')[0] + 'Z';
 
-  // mimetype MUST be first and uncompressed
+  // mimetype MUST be first, uncompressed, and exactly 20 bytes
   zip.file('mimetype', 'application/epub+zip', { compression: 'STORE' });
 
   // META-INF/container.xml
-  zip.file('META-INF/container.xml', `<?xml version="1.0"?>
+  zip.file('META-INF/container.xml', `<?xml version="1.0" encoding="UTF-8"?>
 <container version="1.0" xmlns="urn:oasis:names:tc:opendocument:xmlns:container">
   <rootfiles>
     <rootfile full-path="OEBPS/content.opf" media-type="application/oebps-package+xml"/>
@@ -56,7 +69,7 @@ export async function generateEpub(fileContent: string, options: EpubOptions): P
   // OEBPS/chapters
   chapters.forEach((chapter, i) => {
     const filename = `chapter_${i}.xhtml`;
-    const id = `ch${i}`;
+    const id = toXmlId('ch', i);
     
     let paras = chapter.content
       .split(/\n+/)
@@ -64,15 +77,12 @@ export async function generateEpub(fileContent: string, options: EpubOptions): P
       .filter(p => p.length > 0);
 
     if (options.koboOptimization) {
-      // Manual KePub implementation: Wrap sentences in spans
       paras = paras.map((p, pIdx) => {
         const segments = p.split(/([。！？；…]+)/).filter(s => s.length > 0);
         let processedP = '';
-        
         for (let sIdx = 0; sIdx < segments.length; sIdx++) {
           const text = segments[sIdx];
           const spanId = `kobo.${i + 1}.${pIdx + 1}.${Math.floor(sIdx / 2) + 1}`;
-          
           if (sIdx % 2 === 0) {
             const punctuation = segments[sIdx + 1] || '';
             processedP += `<span class="koboSpan" id="${spanId}">${escapeHtml(text + punctuation)}</span>`;
@@ -89,14 +99,17 @@ export async function generateEpub(fileContent: string, options: EpubOptions): P
 
     const xhtml = `<?xml version="1.0" encoding="utf-8"?>
 <!DOCTYPE html>
-<html xmlns="http://www.w3.org/1999/xhtml" xml:lang="zh-TW" lang="zh-TW">
+<html xmlns="http://www.w3.org/1999/xhtml" xmlns:epub="http://www.idpf.org/2007/ops" xml:lang="zh-TW" lang="zh-TW">
 <head>
+  <meta charset="UTF-8" />
   <title>${escapeHtml(chapter.title)}</title>
   <link rel="stylesheet" type="text/css" href="style.css"/>
 </head>
 <body>
-  <h1>${escapeHtml(chapter.title)}</h1>
-  ${paras.join('\n')}
+  <section epub:type="chapter">
+    <h1>${escapeHtml(chapter.title)}</h1>
+    ${paras.join('\n')}
+  </section>
 </body>
 </html>`;
 
@@ -106,15 +119,15 @@ export async function generateEpub(fileContent: string, options: EpubOptions): P
     toc.push(`<li><a href="${filename}">${escapeHtml(chapter.title)}</a></li>`);
   });
 
-  // OEBPS/content.opf
+  // OEBPS/content.opf (EPUB 3.3 compliant)
   const opf = `<?xml version="1.0" encoding="UTF-8"?>
-<package xmlns="http://www.idpf.org/2007/opf" version="3.0" unique-identifier="pub-id">
+<package xmlns="http://www.idpf.org/2007/opf" version="3.0" unique-identifier="pub-id" prefix="rendition: http://www.idpf.org/2007/opf/prediction/#">
   <metadata xmlns:dc="http://purl.org/dc/elements/1.1/">
     <dc:identifier id="pub-id">urn:uuid:${bookUuid}</dc:identifier>
     <dc:title>${escapeHtml(title)}</dc:title>
-    <dc:creator>${escapeHtml(options.author)}</dc:creator>
+    <dc:creator>${escapeHtml(author)}</dc:creator>
     <dc:language>zh-TW</dc:language>
-    <meta property="dcterms:modified">${new Date().toISOString().split('.')[0]}Z</meta>
+    <meta property="dcterms:modified">${modifiedDate}</meta>
   </metadata>
   <manifest>
     <item id="style" href="style.css" media-type="text/css"/>
@@ -132,11 +145,12 @@ export async function generateEpub(fileContent: string, options: EpubOptions): P
 <!DOCTYPE html>
 <html xmlns="http://www.w3.org/1999/xhtml" xmlns:epub="http://www.idpf.org/2007/ops" xml:lang="zh-TW" lang="zh-TW">
 <head>
-  <title>目錄</title>
+  <meta charset="UTF-8" />
+  <title>Table of Contents</title>
 </head>
 <body>
-  <nav epub:type="toc">
-    <h1>目錄</h1>
+  <nav epub:type="toc" id="toc">
+    <h1>Table of Contents</h1>
     <ol>
       ${toc.join('\n      ')}
     </ol>
@@ -145,8 +159,14 @@ export async function generateEpub(fileContent: string, options: EpubOptions): P
 </html>`;
   zip.file('OEBPS/nav.xhtml', nav);
 
-  return await zip.generateAsync({ type: 'blob' });
+  return await zip.generateAsync({ 
+    type: 'blob',
+    mimeType: 'application/epub+zip',
+    compression: 'DEFLATE'
+  });
 }
+
+export { sanitizeFilename };
 
 export async function readFileWithEncoding(file: File): Promise<string> {
   const buffer = await file.arrayBuffer();
@@ -183,7 +203,7 @@ function parseChapters(content: string, bookTitle: string): Chapter[] {
   const chapters: Chapter[] = [];
   
   if (parts[0].trim()) {
-    chapters.push({ title: '序言', content: parts[0].trim() });
+    chapters.push({ title: 'Preface', content: parts[0].trim() });
   }
   
   if (parts.length > 1) {

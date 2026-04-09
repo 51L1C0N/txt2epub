@@ -21,7 +21,7 @@ import { Separator } from '@/components/ui/separator';
 import { Badge } from '@/components/ui/badge';
 import { Toaster } from '@/components/ui/sonner';
 import { toast } from 'sonner';
-import { generateEpub, EpubOptions, readFileWithEncoding } from '@/src/services/epubService';
+import { generateEpub, EpubOptions, readFileWithEncoding, sanitizeFilename } from '@/src/services/epubService';
 
 export default function App() {
   const [file, setFile] = useState<File | null>(null);
@@ -64,7 +64,8 @@ export default function App() {
     try {
       const blob = await generateEpub(fileContent, options);
       const extension = options.koboOptimization ? '.kepub.epub' : '.epub';
-      saveAs(blob, `${options.title || 'ebook'}${extension}`);
+      const safeTitle = sanitizeFilename(options.title || 'ebook');
+      saveAs(blob, `${safeTitle}${extension}`);
       toast.success('EPUB generated successfully!');
     } catch (error) {
       console.error(error);
@@ -166,7 +167,7 @@ export default function App() {
                 <div className="flex items-center justify-between">
                   <div className="space-y-0.5">
                     <Label className="text-sm font-medium">Traditional Chinese Conversion</Label>
-                    <p className="text-xs text-muted-foreground">Convert Simplified Chinese to Traditional (TW)</p>
+                    <p className="text-xs text-muted-foreground">Convert Simplified Chinese to Traditional Chinese</p>
                   </div>
                   <Switch 
                     checked={options.convertToTraditional} 
@@ -178,8 +179,8 @@ export default function App() {
 
                 <div className="flex items-center justify-between">
                   <div className="space-y-0.5">
-                    <Label className="text-sm font-medium">Kobo (KePub) 增強</Label>
-                    <p className="text-xs text-muted-foreground">添加語句級別的 span 標籤，支持 Kobo 字典與統計</p>
+                    <Label className="text-sm font-medium">Kobo (KePub) Optimization</Label>
+                    <p className="text-xs text-muted-foreground">Add sentence-level span tags for Kobo dictionary and statistics support</p>
                   </div>
                   <Switch 
                     checked={options.koboOptimization} 
